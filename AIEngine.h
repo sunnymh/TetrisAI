@@ -14,6 +14,8 @@
 #include <iostream>
 using namespace std;
 
+const int MAX_HEIGHT = 20;
+
 struct Piece{
     int m_bottom[4];
     int m_top[4];
@@ -95,14 +97,17 @@ public:
     {
         m_boardW = boardW;
         m_boardH = boardH;
-        m_curX = curX;
-        m_curY = curY;
+        m_curX = curX-1;
+        m_curY = curY-1;
         FULL_ROW = (1<<m_boardW)-1;
     };
     void pieceCheck();
     int getMax(Board& board, char curPiece, int* bestX, int* bestRotation);
-    bool tryGo(Board& board, Piece* piece, int& rowsEliminated, int leftmostIndex, int& landingHeight);
+    bool canRotate(Board& board, Piece* piece);
+    void findBound(Board& board, Piece* piece, int& leftBound, int& rightBound);
+    void makeMove(Board& board, Piece* piece, int& rowsEliminated, int leftmostIndex, int& landingHeight);
     double evaluateBoard(Board& board, int rowsEliminated, int landingHeight, int pieceHeight);
+    ~AIEngine();
 
 private:
     int m_boardW, m_boardH, m_curX, m_curY, FULL_ROW;

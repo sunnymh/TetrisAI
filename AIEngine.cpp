@@ -51,6 +51,17 @@ void AIEngine::pieceCheck()
     for (int i = 0; i<m_TPieceMap.size(); i++) {m_TPieceMap[i]->printPiece();}
 }
 
+AIEngine::~AIEngine()
+{
+    for (int i = 0; i<m_OPieceMap.size(); i++) {delete m_OPieceMap[i];}
+    for (int i = 0; i<m_IPieceMap.size(); i++) {delete m_IPieceMap[i];}
+    for (int i = 0; i<m_SPieceMap.size(); i++) {delete m_SPieceMap[i];}
+    for (int i = 0; i<m_ZPieceMap.size(); i++) {delete m_ZPieceMap[i];}
+    for (int i = 0; i<m_LPieceMap.size(); i++) {delete m_LPieceMap[i];}
+    for (int i = 0; i<m_JPieceMap.size(); i++) {delete m_JPieceMap[i];}
+    for (int i = 0; i<m_TPieceMap.size(); i++) {delete m_TPieceMap[i];}
+}
+
 int AIEngine::getMax(Board& board , char curPiece, int *bestX, int *bestRotation){
     vector<Piece*> rotations;
     switch (curPiece){
@@ -73,16 +84,19 @@ int AIEngine::getMax(Board& board , char curPiece, int *bestX, int *bestRotation
     double heursitics = -1 * std::numeric_limits<float>::infinity();
     *bestX = 0;
     *bestRotation = 0;
+    Board nextBoard;
+    int leftBound, rightBound;
     
     for(int i = 0;i<rotations.size();i++)
     {
         Piece* rotation = rotations[i];
-        Board nextBoard;
-        for(int j = 0; j <= m_boardW-(rotation->m_width); j++)
-        {
-            nextBoard.copyBoard(board);
-            int rowsEliminated, landingHeight;
-            if(tryGo(nextBoard, rotation, rowsEliminated, j, landingHeight)){
+        if (canRotate(board, rotation)){
+            findBound(board, rotation, leftBound, rightBound);
+            for(int j = 0; j <= m_boardW-(rotation->m_width); j++)
+            {
+                nextBoard.copyBoard(board);
+                int rowsEliminated, landingHeight;
+                makeMove(nextBoard, rotation, rowsEliminated, j, landingHeight);
                 double curEvaluation = evaluateBoard(nextBoard,  rowsEliminated, landingHeight, rotation->m_height);
                 if (curEvaluation > heursitics) {
                     heursitics = curEvaluation;
@@ -92,21 +106,68 @@ int AIEngine::getMax(Board& board , char curPiece, int *bestX, int *bestRotation
             }
         }
     }
-    *bestX += 3-rotations[*bestRotation]->m_leftmost;
+    *bestX += 2-rotations[*bestRotation]->m_leftmost + 1;
     *bestRotation += 1;
     return 0;
 }
 
-bool AIEngine::tryGo(Board& board, Piece* piece, int& rowsEliminated, int leftmostIndex, int& landingHeight)
+bool AIEngine::canRotate(Board& board, Piece *piece)
+{
+    for (int i = 0; i < piece->m_width; i++)
+    {
+        for (int j = piece->m_bottom[(piece->m_leftmost)+i]; j < piece->m_top[(piece->m_leftmost)+i]; j++) {
+            if (((board.m_rows[m_curY-2+j]>>(m_boardW - (m_curX-2+i+piece->m_leftmost) - 1))&1) == 1) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+void AIEngine::findBound(Board &board, Piece *piece, int &leftBound, int &rightBound)
+{
+    int lowestX = 3;
+    int highestX = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        if(piece->m_bottom[i]==piece->m_lowest)
+        {
+            lowestX = i;
+            break;
+        }
+    }
+    for (int i = m_curX-2+lowestX; i >= lowestX - piece->m_leftmost; i--) {
+        if (board.m_heights[i] <= (m_curY - 2 + piece->m_lowest)) {
+            leftBound = i + piece->m_leftmost - lowestX;
+        }else {
+            break;
+        }
+    }
+
+    for (int i = 3; i >= 0; i--)
+    {
+        if(piece->m_bottom[i]==piece->m_lowest)
+        {
+            highestX = i;
+            break;
+        }
+    }
+    for (int i = m_curX-2+highestX; i <= (m_boardW-piece->m_width + highestX - piece->m_leftmost); i++) {
+        if (board.m_heights[i] <= (m_curY - 2 + piece->m_lowest)) {
+            rightBound = i + piece->m_leftmost - highestX;
+        }else {
+            break;
+        }
+    }
+}
+
+void AIEngine::makeMove(Board& board, Piece* piece, int& rowsEliminated, int leftmostIndex, int& landingHeight)
 {
     // Find the lowest row the piece can go to.
     int lowestY = -4;
     int curY = 0;
     for (int i = 0; i < piece->m_width; i++) {
         curY = board.m_heights[i+leftmostIndex] - piece->m_bottom[(piece->m_leftmost)+i];
-        if (curY + piece->m_top[(piece->m_leftmost)+i] > m_boardH) {
-            return false;
-        }
         if (curY > lowestY) {
             lowestY = curY;
         }
@@ -125,7 +186,7 @@ bool AIEngine::tryGo(Board& board, Piece* piece, int& rowsEliminated, int leftmo
     
     // Remove the lines that are full
     rowsEliminated = 0;
-    int rowToCopy[20];
+    int rowToCopy[MAX_HEIGHT];
     int nextCopy = 0;
     for(int i = 0; i < m_boardH; i++)
     {
@@ -149,7 +210,6 @@ bool AIEngine::tryGo(Board& board, Piece* piece, int& rowsEliminated, int leftmo
     for (int i = 0; i < m_boardW; i++) {
         board.m_heights[i] -= rowsEliminated;
     }
-    return true;
 }
 
 double AIEngine::evaluateBoard(Board& board, int rowsEliminated, int landingHeight, int pieceHeight){
