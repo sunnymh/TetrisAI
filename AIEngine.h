@@ -11,7 +11,9 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 using namespace std;
+
 struct Piece{
     int m_bottom[4];
     int m_top[4];
@@ -25,11 +27,29 @@ struct Piece{
         for(int i = 0;i<4;i++){m_bottom[i]=bottom[i]-'0';}
         for(int i = 0;i<4;i++){m_top[i]=top[i]-'0';}
     };
+    
+    void printPiece()
+    {
+        for(int i = 0; i < 4; i++)
+        {
+            for(int j = 0; j < 4; j++)
+            {
+                if(3-i>=m_bottom[j]&&3-i<m_top[j]){cout << 'o';}
+                else{cout << '.';}
+            }
+            cout << endl;
+        }
+        cout << "leftmost: " << m_leftmost
+        << " lowest: " << m_lowest
+        << " height: " << m_height
+        << " width: " << m_width << endl;
+    }
 };
 
 struct Board{
     int m_rows[20];
     int m_heights[10];
+    Board(){};
     Board(int boardW, int boardH, char board[])
     {
         for(int i = 0; i < 20; i++)
@@ -52,7 +72,7 @@ struct Board{
             }
         }
     };
-    Board(const Board& board){
+    void copyBoard(const Board& board){
         memcpy(m_rows, board.m_rows, 20*sizeof(int));
         memcpy(m_heights, board.m_heights, 10*sizeof(int));
     }
@@ -77,13 +97,15 @@ public:
         m_boardH = boardH;
         m_curX = curX;
         m_curY = curY;
+        FULL_ROW = (1<<m_boardW)-1;
     };
+    void pieceCheck();
     int getMax(Board& board, char curPiece, int* bestX, int* bestRotation);
     bool tryGo(Board& board, Piece* piece, int& rowsEliminated, int leftmostIndex, int& landingHeight);
     double evaluateBoard(Board& board, int rowsEliminated, int landingHeight, int pieceHeight);
 
 private:
-    int m_boardW, m_boardH, m_curX, m_curY;
+    int m_boardW, m_boardH, m_curX, m_curY, FULL_ROW;
     vector<Piece*> m_OPieceMap, m_IPieceMap, m_SPieceMap, m_ZPieceMap, m_LPieceMap, m_JPieceMap, m_TPieceMap;
     int getRowTransitions(Board& board);
     int getColTransitions(Board& board);

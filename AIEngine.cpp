@@ -9,8 +9,6 @@
 #include "AIEngine.h"
 #include <queue>
 
-const int FULL_ROW = (1<<10)-1;
-
 AIEngine::AIEngine()
 {
     // O piece
@@ -35,11 +33,22 @@ AIEngine::AIEngine()
     m_JPieceMap.push_back(new Piece("0222","0433",1,2,3,2));
     m_JPieceMap.push_back(new Piece("0110","0240",1,1,2,3));
     // T piece
-    m_TPieceMap.push_back(new Piece("0212","0444",1,1,3,2));
+    m_TPieceMap.push_back(new Piece("0212","0333",1,1,3,2));
     m_TPieceMap.push_back(new Piece("0012","0043",2,1,2,3));
     m_TPieceMap.push_back(new Piece("0222","0343",1,2,3,2));
     m_TPieceMap.push_back(new Piece("0210","0340",1,1,2,3));
 
+}
+
+void AIEngine::pieceCheck()
+{
+    for (int i = 0; i<m_OPieceMap.size(); i++) {m_OPieceMap[i]->printPiece();}
+    for (int i = 0; i<m_IPieceMap.size(); i++) {m_IPieceMap[i]->printPiece();}
+    for (int i = 0; i<m_SPieceMap.size(); i++) {m_SPieceMap[i]->printPiece();}
+    for (int i = 0; i<m_ZPieceMap.size(); i++) {m_ZPieceMap[i]->printPiece();}
+    for (int i = 0; i<m_LPieceMap.size(); i++) {m_LPieceMap[i]->printPiece();}
+    for (int i = 0; i<m_JPieceMap.size(); i++) {m_JPieceMap[i]->printPiece();}
+    for (int i = 0; i<m_TPieceMap.size(); i++) {m_TPieceMap[i]->printPiece();}
 }
 
 int AIEngine::getMax(Board& board , char curPiece, int *bestX, int *bestRotation){
@@ -61,16 +70,17 @@ int AIEngine::getMax(Board& board , char curPiece, int *bestX, int *bestRotation
         rotations = m_TPieceMap; break;
     }
 
-    double heursitics = -100000;
+    double heursitics = -1 * std::numeric_limits<float>::infinity();
     *bestX = 0;
     *bestRotation = 0;
     
     for(int i = 0;i<rotations.size();i++)
     {
         Piece* rotation = rotations[i];
+        Board nextBoard;
         for(int j = 0; j <= m_boardW-(rotation->m_width); j++)
         {
-            Board nextBoard(board);
+            nextBoard.copyBoard(board);
             int rowsEliminated, landingHeight;
             if(tryGo(nextBoard, rotation, rowsEliminated, j, landingHeight)){
                 double curEvaluation = evaluateBoard(nextBoard,  rowsEliminated, landingHeight, rotation->m_height);
@@ -94,7 +104,7 @@ bool AIEngine::tryGo(Board& board, Piece* piece, int& rowsEliminated, int leftmo
     int curY = 0;
     for (int i = 0; i < piece->m_width; i++) {
         curY = board.m_heights[i+leftmostIndex] - piece->m_bottom[(piece->m_leftmost)+i];
-        if (curY + piece->m_top[(piece->m_leftmost)+i] > 20) {
+        if (curY + piece->m_top[(piece->m_leftmost)+i] > m_boardH) {
             return false;
         }
         if (curY > lowestY) {
@@ -108,7 +118,7 @@ bool AIEngine::tryGo(Board& board, Piece* piece, int& rowsEliminated, int leftmo
     for (int i = 0; i < piece->m_width; i++)
     {
         for (int j = piece->m_bottom[(piece->m_leftmost)+i]; j < piece->m_top[(piece->m_leftmost)+i]; j++) {
-            board.m_rows[lowestY + j] |= 1<<(10-1-leftmostIndex-i);
+            board.m_rows[lowestY + j] |= 1<<(m_boardW-1-leftmostIndex-i);
         }
         board.m_heights[leftmostIndex+i]+= (piece->m_top[(piece->m_leftmost)+i] - piece->m_lowest);
     }
@@ -117,7 +127,7 @@ bool AIEngine::tryGo(Board& board, Piece* piece, int& rowsEliminated, int leftmo
     rowsEliminated = 0;
     int rowToCopy[20];
     int nextCopy = 0;
-    for(int i = 0; i < 20; i++)
+    for(int i = 0; i < m_boardH; i++)
     {
         if (board.m_rows[i]!=FULL_ROW) {
             rowToCopy[nextCopy] = i;
@@ -132,11 +142,11 @@ bool AIEngine::tryGo(Board& board, Piece* piece, int& rowsEliminated, int leftmo
         }
     }
     
-    for (int i = nextCopy; i<20; i++) {
+    for (int i = nextCopy; i<m_boardH; i++) {
         board.m_rows[i] = 0;
     }
     
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < m_boardW; i++) {
         board.m_heights[i] -= rowsEliminated;
     }
     return true;
@@ -164,7 +174,7 @@ int AIEngine::getRowTransitions(Board &board)
     for (int i = 0; i < m_boardH; i++) {
         int row = board.m_rows[i];
         for (int j = 0; j < m_boardW; j++) {
-            bit = (row >> (10-j-1)) & 1;
+            bit = (row >> (m_boardW-j-1)) & 1;
             if (bit != last_bit) {
                 transitions++;
             }
@@ -187,7 +197,7 @@ int AIEngine::getColTransitions(Board &board)
     for (int i = 0; i < m_boardW; i++) {
         for (int j = 0; j < m_boardH; j++) {
             int row = board.m_rows[j];
-            bit = (row >> (10-i-1)) & 1;
+            bit = (row >> (m_boardW-i-1)) & 1;
             if (bit != last_bit) {
                 transitions++;
             }
@@ -207,7 +217,7 @@ int AIEngine::getNumOfHoles(Board& board)
     for (int i = m_boardH - 2; i >= 0; i--) {
         row_holes = ~board.m_rows[i] & (previous_row | row_holes);
         for (int j = 0; j < m_boardW; j++) {
-            holes += ((row_holes >> (10-j-1)) & 1);
+            holes += ((row_holes >> (m_boardW-j-1)) & 1);
         }
         previous_row = board.m_rows[i];
     }
@@ -220,13 +230,13 @@ int AIEngine::getNumOfWells(Board& board)
     
     for (int i = 1; i < m_boardW - 1; i++) {
         for (int j = m_boardH - 1; j >= 0; j--) {
-            if ((((board.m_rows[j] >> (10-i-1)) & 1) == 0) &&
-                (((board.m_rows[j] >> (10-i)) & 1) == 1) &&
-                (((board.m_rows[j] >> (10-i-2)) & 1) == 1))
+            if ((((board.m_rows[j] >> (m_boardW-i-1)) & 1) == 0) &&
+                (((board.m_rows[j] >> (m_boardW-i)) & 1) == 1) &&
+                (((board.m_rows[j] >> (m_boardW-i-2)) & 1) == 1))
             {
                 well_sums++;
                 for (int k = j - 1; k >= 0; k--) {
-                    if (((board.m_rows[k] >> (10-i-1)) & 1) == 0) {
+                    if (((board.m_rows[k] >> (m_boardW-i-1)) & 1) == 0) {
                         well_sums++;
                     } else {
                         break;
@@ -238,11 +248,11 @@ int AIEngine::getNumOfWells(Board& board)
 
     // Check for well cells in the rightmost column of the board.
     for (int j = m_boardH - 1; j >= 0; j--) {
-        if ((((board.m_rows[j] >> (10-0-1)) & 1) == 0) &&
-            (((board.m_rows[j] >> (10-1-1)) & 1) == 1)) {
+        if ((((board.m_rows[j] >> (m_boardW-0-1)) & 1) == 0) &&
+            (((board.m_rows[j] >> (m_boardW-1-1)) & 1) == 1)) {
             well_sums++;
             for (int k = j - 1; k >= 0; --k) {
-                if (((board.m_rows[k] >> (10-0-1)) & 1) == 0) {
+                if (((board.m_rows[k] >> (m_boardW-0-1)) & 1) == 0) {
                     well_sums++;
                 } else {
                     break;

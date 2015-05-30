@@ -8,8 +8,6 @@
 
 #include <iostream>
 #include "AIEngine.h"
-const int BOARD_WIDTH = 10;
-const int BOARD_HEIGHT = 20;
 
 AIEngine engine;
 
@@ -30,8 +28,8 @@ int AI(int boardW, int boardH,
 int main(int argc, const char * argv[]) {
     int bestX;
     int bestRotation;
-    int boardW = BOARD_WIDTH;
-    int boardH = BOARD_HEIGHT;
+    int boardW = 10;
+    int boardH = 20;
     int curX = boardW/2 + 1;
     int curY = boardH - 1;
     int curR = 1;
@@ -45,5 +43,7 @@ int main(int argc, const char * argv[]) {
        curX, curY, curR, nextPiece,
        &bestX, &bestRotation);
     cout << bestX<< "    "<<bestRotation<< endl;
+    engine.pieceCheck();
+    cout <<"df"<<endl;
     return 0;
 }
